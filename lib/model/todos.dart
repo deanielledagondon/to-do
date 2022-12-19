@@ -19,16 +19,16 @@ class TaskModel {
   bool? completed;
 
   factory TaskModel.fromJson(Map<String, dynamic> json) => TaskModel(
-        userId: json["userId"],
-        id: json["id"],
-        title: json["title"],
-        completed: json["completed"],
-      );
+    userId: json["userId"],
+    id: json["id"],
+    title: json["title"],
+    completed: json["completed"],
+  );
 
   Map<String, dynamic> toJson() => {
-        "userId": userId,
-        "id": id,
-        "title": title,
-        "completed": completed,
-      };
+    "userId": userId,
+    "id": id,
+    "title": title,
+    "completed": completed,
+  };
 }

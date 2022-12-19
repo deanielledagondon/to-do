@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:to_do_sample/edit_task.dart';
 import 'package:to_do_sample/add_task.dart';
-
+import 'package:to_do_sample/db/todo_database.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
+import 'dart:core';
+import 'package:flutter/foundation.dart';
+import 'package:sqflite/sqflite.dart' as sql;
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -15,7 +19,19 @@ class HomePage extends StatefulWidget {
 const String baseURL = 'https://jsonplaceholder.typicode.com/todos';
 
 class _HomePageState extends State<HomePage> {
+  List<Map<String, dynamic>> _todos = [];
+
+  bool _isLoading = true;
+
   List getResponse = <dynamic>[];
+
+  void _refreshTodos() async {
+    final data = await SQLHelper.getItems();
+    setState(() {
+      _todos = data;
+      _isLoading = false;
+    });
+  }
 
   getTodo() async {
     var url = Uri.parse(baseURL);
@@ -69,7 +85,9 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     getTodo();
+    _refreshTodos();
     super.initState();
+    print('... number of items ${_todos.length}');
   }
 
   @override
