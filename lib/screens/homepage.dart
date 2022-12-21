@@ -19,19 +19,9 @@ class HomePage extends StatefulWidget {
 const String baseURL = 'https://jsonplaceholder.typicode.com/todos';
 
 class _HomePageState extends State<HomePage> {
-  List<Map<String, dynamic>> _todos = [];
-
-  bool _isLoading = true;
 
   List getResponse = <dynamic>[];
 
-  void _refreshTodos() async {
-    final data = await SQLHelper.getItems();
-    setState(() {
-      _todos = data;
-      _isLoading = false;
-    });
-  }
 
   getTodo() async {
     var url = Uri.parse(baseURL);
@@ -82,13 +72,6 @@ class _HomePageState extends State<HomePage> {
             'Successfully created task: ${object["title"]} ID: ${object["id"]}')));
   }
 
-  @override
-  void initState() {
-    getTodo();
-    _refreshTodos();
-    super.initState();
-    print('... number of items ${_todos.length}');
-  }
 
   @override
   Widget build(BuildContext context) {

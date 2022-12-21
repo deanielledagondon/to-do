@@ -25,7 +25,7 @@ Future<TaskModel?> submitData(String title, bool status) async {
     print(display);
 
     String todoResponse = response.body;
-    taskFromJson(todoResponse);
+    taskFromMap(todoResponse);
   } else {
     return null;
   }
