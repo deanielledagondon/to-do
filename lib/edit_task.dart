@@ -1,48 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:to_do_sample/db/todo_database.dart';
+
+// http.patch
 
 class EditTask extends StatefulWidget {
-  final dynamic todo;
+  final int userID;
+  final String taskTitle;
+  final bool isDone;
 
-  const EditTask({required this.todo, Key? key}) : super(key: key);
+  const EditTask(
+      {Key? key,
+      required this.userID,
+      required this.taskTitle,
+      required this.isDone})
+      : super(key: key);
 
   @override
   State<EditTask> createState() => _EditTaskState();
 }
 
-const String baseUrl = 'https://jsonplaceholder.typicode.com/todos';
-
 class _EditTaskState extends State<EditTask> {
-  var id = '';
-  var check;
+  var id = 0;
 
   final titleController = TextEditingController();
+  final completed = TextEditingController();
 
   final formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
     super.initState();
-    titleController.text = widget.todo["title"];
-    id = widget.todo["id"].toString();
-    check = widget.todo["title"];
-  }
-
-  editUser() async {
-    var newTitle = titleController.text;
-    var url = Uri.parse('$baseUrl/$id');
-    var bodyData = json.encode({
-      'title': newTitle,
-    });
-    var response = await http.patch(url, body: bodyData);
-    if (response.statusCode == 200) {
-      print('\nSuccessfully edited Task id: $id!');
-      var display = response.body;
-      print(display);
-    } else {
-      return null;
-    }
+    id = widget.userID;
+    titleController.text = widget.taskTitle;
+    completed.text = widget.isDone.toString();
   }
 
   @override
@@ -77,25 +67,42 @@ class _EditTaskState extends State<EditTask> {
                 },
               ),
               Container(
+                padding: const EdgeInsets.all(12),
+                child: TextFormField(
+                  controller: completed,
+                  decoration: const InputDecoration(
+                    icon: Icon(Icons.question_mark),
+                    hintText: 'Yes/No',
+                  ),
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.done,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter Yes if the task is finished, otherwise enter No';
+                    } else {
+                      return null;
+                    }
+                  },
+                ),
+              ),
+              Container(
                 alignment: Alignment.center,
                 padding: const EdgeInsets.all(18),
                 child: ElevatedButton(
                   onPressed: () async {
                     if (formKey.currentState!.validate()) {
-                      if (check != titleController.text) {
-                        await editUser();
-                        Navigator.pop(context, check);
-                      } else {
-                        return;
-                      }
+                      var data = SQLHelper.editTask(
+                          id, titleController.text, completed.text);
+                      Navigator.pop(context, data);
                     } else {
                       return;
                     }
                   },
-                  child: const Text('SUBMIT NEW TASK',
+                  child: const Text(
+                    'SUBMIT NEW TASK',
                     style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
                 ),
-              ),
               ),
             ],
           ),

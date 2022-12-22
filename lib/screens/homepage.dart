@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:to_do_sample/db/todo_database.dart';
 import 'package:to_do_sample/edit_task.dart';
 import 'package:to_do_sample/add_task.dart';
-import 'package:to_do_sample/db/todo_database.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'dart:async';
 import 'dart:core';
-import 'package:flutter/foundation.dart';
-import 'package:sqflite/sqflite.dart' as sql;
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -16,62 +11,21 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-const String baseURL = 'https://jsonplaceholder.typicode.com/todos';
-
 class _HomePageState extends State<HomePage> {
+  List<Map<String, dynamic>> _todoList = [];
 
-  List getResponse = <dynamic>[];
-
-
-  getTodo() async {
-    var url = Uri.parse(baseURL);
-    var response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      setState(() {
-        getResponse = jsonDecode(response.body) as List<dynamic>;
-      });
-    } else {
-      return null;
-    }
+  void _refreshTask() async {
+    final data = await SQLHelper.getAllTasks();
+    setState(() {
+      _todoList = data;
+    });
   }
 
-  deleteTodo(var object) async {
-    var url = Uri.parse('$baseURL/${object["id"]}');
-    var response = await http.delete(url);
-
-    if (response.statusCode == 200) {
-      print(
-          'Successfully deleted task: ${object["title"]} ID: ${object["id"]}');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: Colors.red[400],
-        content: Text(
-            'Successfully deleted task: ${object["title"]} ID: ${object["id"]}'),
-        action: SnackBarAction(
-            label: 'DISMISS',
-            onPressed: () {
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            }),
-      ));
-    } else {
-      return null;
-    }
+  @override
+  void initState() {
+    super.initState();
+    _refreshTask();
   }
-
-  displayEditedTask(var object) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: Colors.deepPurple,
-        content: Text(
-            'Successfully edited task: ${object["title"]} ID: ${object["id"]}')));
-  }
-
-  displayCreatedTask(var object) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: Colors.deepPurple,
-        content: Text(
-            'Successfully created task: ${object["title"]} ID: ${object["id"]}')));
-  }
-
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +40,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(12),
-        itemCount: getResponse.length,
+        itemCount: _todoList.length,
         itemBuilder: (context, index) {
           return Dismissible(
             key: UniqueKey(),
@@ -115,48 +69,46 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             child: CheckboxListTile(
-              title: Text('${getResponse[index]['title']}'),
+              title: Text(_todoList[index]['title']),
+              subtitle: Text(_todoList[index]['isDone']),
               controlAffinity: ListTileControlAffinity.leading,
               activeColor: Colors.deepPurple,
+              value: _todoList[index]['isDone'],
               secondary: IconButton(
                 onPressed: () async {
-                  var check = await Navigator.push(
+                  await Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) =>
-                              EditTask(todo: getResponse[index])));
-                  if (check != null) {
-                    displayEditedTask(getResponse[index]);
-                  } else {
-                    print('No changes were made');
-                  }
+                          builder: (context) => EditTask(
+                                userID: _todoList[index]['id'],
+                                taskTitle: _todoList[index]['title'],
+                                isDone: _todoList[index]['isDone'],
+                              )));
+                  _refreshTask();
                 },
                 icon: const Icon(Icons.edit),
                 color: Colors.black,
               ),
-
-              value: getResponse[index]['completed'],
-              onChanged: (bool? value) {
+              onChanged: (value) {
                 setState(() {
-                  getResponse[index]['completed'] = value!;
+                  _todoList[index]['isDone'] = value!;
                 });
               },
             ),
-            onDismissed: (direction) =>
-              setState(() {
-                deleteTodo(getResponse[index]);
-                getResponse.removeAt(index);
-              })
+            onDismissed: (direction) async {
+              await SQLHelper.deleteTask(_todoList[index]['id']);
+              _refreshTask();
+            },
           );
         },
       ),
-
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           showModalBottomSheet(
             context: context,
             builder: (_) => const AddTask(),
           );
+          _refreshTask();
         },
         tooltip: 'Add a new item!',
         child: const Icon(Icons.bookmark_add_outlined),

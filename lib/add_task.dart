@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:to_do_sample/model/todos.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:to_do_sample/db/todo_database.dart';
 
 class AddTask extends StatefulWidget {
   const AddTask({
@@ -12,37 +10,11 @@ class AddTask extends StatefulWidget {
   State<AddTask> createState() => _AddTaskState();
 }
 
-const String baseUrl = 'https://jsonplaceholder.typicode.com/todos';
-
-Future<TaskModel?> submitData(String title, bool status) async {
-  var url = Uri.parse(baseUrl);
-  var bodyData = json.encode({'title': title, 'completed': status});
-  var response = await http.post(url, body: bodyData);
-
-  if (response.statusCode == 201) {
-    print('Successfully added a task!');
-    var display = response.body;
-    print(display);
-
-    String todoResponse = response.body;
-    taskFromMap(todoResponse);
-  } else {
-    return null;
-  }
-  return null;
-
-
-}
-
 class _AddTaskState extends State<AddTask> {
-  TaskModel? task;
+  var formKey = GlobalKey<FormState>();
 
-  final _formKey = GlobalKey<FormState>();
-
-  var title = TextEditingController();
-
-
-
+  final title = TextEditingController();
+  final completed = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +26,7 @@ class _AddTaskState extends State<AddTask> {
             const TextStyle(color: Color.fromRGBO(255, 255, 255, 10)),
       ),
       body: Form(
-        key: _formKey,
+        key: formKey,
         autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
           children: [
@@ -78,6 +50,25 @@ class _AddTaskState extends State<AddTask> {
               ),
             ),
             Container(
+              padding: const EdgeInsets.all(12),
+              child: TextFormField(
+                controller: completed,
+                decoration: const InputDecoration(
+                  icon: Icon(Icons.question_mark),
+                  hintText: 'Yes/No',
+                ),
+                keyboardType: TextInputType.text,
+                textInputAction: TextInputAction.done,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter Yes if the task is finished, otherwise enter No';
+                  } else {
+                    return null;
+                  }
+                },
+              ),
+            ),
+            Container(
               alignment: Alignment.center,
               child: ElevatedButton(
                   child: const Text(
@@ -85,15 +76,12 @@ class _AddTaskState extends State<AddTask> {
                     style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
                   onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
-                      TaskModel? data = await submitData(title.text, false);
-                      setState(() {
-                        task = data;
-                      });
-                    } else {
-                      return;
+                    if (formKey.currentState!.validate()) {
+                      var data =
+                          await SQLHelper.addTask(title.text, completed.text);
+
+                      Navigator.pop(context, data);
                     }
-                    Navigator.pop(context);
                   }),
             ),
           ],

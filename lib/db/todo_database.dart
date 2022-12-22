@@ -1,63 +1,76 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart' as sql;
 import 'package:path/path.dart';
-import 'dart:io' as io;
-import '/model/todos.dart';
+
 
 class SQLHelper {
-  static Database? _database;
 
-  Future<Database?> get database async {
-    if (_database != null) return _database!;
-
-    _database = await initDB();
-
-    return _database;
+  static  Future<sql.Database> db() async {
+    Directory documentsDirectory = await getApplicationDocumentsDirectory();
+    String path = join(documentsDirectory.path, 'Todos.db');
+    return sql.openDatabase(
+      path,
+      version: 1,
+      onCreate: (sql.Database database, int version) async {
+        await createTables(database);
+      },
+    );
   }
 
-  initDB() async {
-    io.Directory documentDirectory = await getApplicationDocumentsDirectory();
-    String path = join(documentDirectory.path, 'Todos.db');
-    var db = await openDatabase(path, version: 1, onCreate: _createDatabase);
-    return db;
+  static Future<void> createTables(sql.Database database) async {
+    await database.execute(''' CREATE TABLE todoApp (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    title TEXT,
+    description TEXT,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) ''');
   }
 
-  _createDatabase(Database database, int version) async {
-    await database.execute(
-        "CREATE TABLE todos("
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-            " title TEXT NOT NULL,"
-            " completed INTEGER NOT NULL);");
+  static Future<int> addTask(String title, String? description) async {
+    final db = await SQLHelper.db();
+    final data = {'title' : title, 'description' : description, 'createdAt' : DateTime.now().toString()};
+    final id = await db.insert('todoApp', data,
+        conflictAlgorithm: sql.ConflictAlgorithm.replace);
+    return id;
   }
 
-  Future<TaskModel> insertTodo(TaskModel taskModel) async {
-    var dbClient = await database;
-    await dbClient?.insert('todos', taskModel.toMap());
-    return taskModel;
+  static Future<List<Map<String, dynamic>>> getAllTasks() async {
+    final db = await SQLHelper.db();
+    return db.query('todoApp', orderBy: 'id');
   }
 
-  Future<List> getTodoList() async {
-    var dbClient = await database;
-    List<Map<String, Object?>> queryResult =
-    await dbClient!.rawQuery('SELECT * FROM todos');
-
-    return queryResult.map((e) => TaskModel.fromMap(e)).toList();
+  static Future<List<Map<String, dynamic>>> getOneTask(int id) async {
+    final db = await SQLHelper.db();
+    return db.query('todoApp', where: 'id = ?', whereArgs: [id], limit: 1);
   }
 
-  Future<int> deleteTodo(int id) async {
-    var dbClient = await database;
-    return await dbClient!.delete('todos', where: 'id = ?', whereArgs: [id]);
+  static Future<int> editTask(
+      int id, String title, String? description) async {
+    final db = await SQLHelper.db();
+
+    final data = {
+      'title' : title,
+      'description' : description,
+      'createdAt' : DateTime.now().toString()
+    };
+
+    final result =
+    await db.update('todoApp', data, where: 'id = ?', whereArgs: [id]);
+    return result;
+
   }
 
-  Future<void> deleteDatabase() async {
-    io.Directory documentDirectory = await getApplicationDocumentsDirectory();
-    String path = join(documentDirectory.path, 'Todos.db');
-    databaseFactory.deleteDatabase(path);
+  //DELETE
+  static Future<void> deleteTask(int id) async {
+    final db = await SQLHelper.db();
+
+    try {
+      await db.delete('todoApp', where: 'id = ?', whereArgs: [id]);
+    } catch (err) {
+      debugPrint('Something went wrong when deleting the task: $err');
+    }
   }
 
-  Future<int> updateTodo(TaskModel taskModel) async {
-    var dbClient = await database;
-    return await dbClient!.update('todos', taskModel.toMap(),
-        where: 'id = ?', whereArgs: [taskModel.id]);
-  }
 }
